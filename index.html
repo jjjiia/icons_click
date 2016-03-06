@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link href='https://fonts.googleapis.com/css?family=Raleway:400,700' rel='stylesheet' type='text/css'>
+<script src="../static/javascripts/d3.v3.min.js"></script>
+<script src="../static/javascripts/topojson.v1.min.js"></script>
+<script src="../static/javascripts/jquery.min.js"></script>
+<script src="../static/javascripts/d3.tip.v0.6.3.js"></script>
+  <script src="http://d3js.org/queue.v1.min.js"></script>
+<script src="../static/javascripts/jquery-ui.min.js"></script>
+<script src="../static/javascripts/jquery-ui.min.js"></script>
+<style>
+
+body {
+  margin: 0;
+  background-color:#fffff2;
+}
+
+path {
+  fill: none;
+  stroke: #000;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.d3-tip {
+  line-height: 1;
+  font-family:Helvetica;
+  padding: 10px;
+  color: #000;
+}
+.major_road {stroke: rgba(0,0,0,1) }
+.minor_road {stroke: rgba(0,0,0,1);}
+.highway { stroke: rgba(0,0,0,1); }
+.rail { stroke: rgba(0,0,0,1);}
+#infoPanel{
+  font-family: 'Raleway', sans-serif;
+  font-size:18px;
+  color:red;
+  letter-spacing:2px;
+  padding:20px;
+  position:absolute;
+  top:0px;
+  left:0px;
+  background-color:#fffff2;
+  margin:20px;
+}
+#rollover{
+  padding:20px;
+  font-size:11px;
+  width:300px;
+}
+.subtitle{
+  padding:20px;
+  font-size:11px;
+  width:300px;
+}
+#trees{
+  position:absolute;
+  left:430px;
+  top:360px;
+  z-index:99;
+  
+}
+#cars{
+  position:absolute;
+  left:820px;
+  top:130px;
+  z-index:99;
+}
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="d3.geo.tile.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script src="paths_data.js"></script>
+<div id="infoPanel">
+  <strong>Test Interactions Map: </strong>
+  Add Icons
+  <div class="subtitle">Press keys a - g to place different icons</div>
+ </div>
+<div>
+
+<script>
+
+var width = Math.max(960, window.innerWidth),
+    height = Math.max(500, window.innerHeight);
+
+var tiler = d3.geo.tile()
+    .size([width, height]);
+
+var projection = d3.geo.mercator()
+    .center([-71.07,42.36])
+    .scale((1 << 24) / 2 / Math.PI)
+    //.translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+   
+      
+var clip = svg.append("svg:clipPath")
+    .attr("id", "clip")
+    .append("svg:circle")
+    .attr('cx', 500)
+    .attr('cy', 500)
+    .attr('r', 140)
+    
+
+var tip = d3.select("#rollover")
+    
+var drag = d3.behavior.drag()
+    .on("drag", function() {
+        var clippy = d3.select('#clip circle');
+        clippy.attr('cx', +clippy.attr('cx') + d3.event.dx);
+        clippy.attr('cy', +clippy.attr('cy') + d3.event.dy);
+    });    
+    
+ drawTiles(tiler,"none")
+initiateAllRoutes()
+        
+function initiateAllRoutes(){
+  
+  var rColors = ["#892B2A","#E64424","#D54863","#CF6042","#EC3355","#C83134"]
+  for(var i in paths){
+    drawPath(paths[i],rColors[i])
+  //  drawIntersection(paths[i])
+  }
+  
+  for(var j in intersections){
+    drawIntersection(intersections[j].coordinates,intersections[j].routes,intersections[j].intersection)
+  }
+}
+
+function drawPath(data,color){
+  var pathName = data.name
+  var pathCoords = data.coordinates  
+  var routes = d3.svg.line()
+  .x(function(d){;return projection([d[0],d[1]])[0]})
+  .y(function(d){return projection([d[0],d[1]])[1]})
+  var paths = svg
+  .append("path")
+  .attr("class",pathName)
+  .attr("d",routes(pathCoords))
+  .style("stroke",color)
+  .attr("opacity",0.2)
+  var paths = svg
+  .append("path")
+//  .attr("class",pathName)
+  .attr("d",routes(pathCoords))
+  .style("stroke",color)
+  .attr("stroke-width",10)
+  .attr("opacity",0)
+  .on("mouseover",function(){
+    
+    tip.html(data.name+"'s commute");
+   
+    d3.select("."+data.name+" circle").attr("opacity",1)
+    
+    d3.select("."+data.name).attr("opacity",1)
+  })
+  .on("mouseout",function(){
+    d3.select("."+data.name).attr("opacity",.2)
+    tip.html("");
+  })
+}
+$(function() {
+	queue()
+		.defer(d3.json,"WaterBodies.geojson")
+		.defer(d3.json,"boston_buildings.geojson")
+		.await(dataDidLoad);
+})
+function dataDidLoad(error,water,buildings) {
+//make 1 svg for everything
+  //  var mapSvg = d3.select("#map").append("svg").attr("width",1200).attr("height",800)
+    //draw each layer
+    draw(water,svg,"water","#0FADBB","none",.3)
+    draw(buildings,svg,"buildings","none","#000",.2)
+}
+function draw(geoData,svg,className,fill,stroke,startingO){
+    //need to generalize projection into global var later
+	
+    //d3 geo path uses projections, it is similar to regular paths in line graphs
+	var path = d3.geo.path().projection(projection);
+
+	svg.selectAll("."+className)
+		.data(geoData.features)
+        .enter()
+        .append("path")
+		.attr("class","."+className)
+		.attr("d",path)
+		.style("fill",fill)
+        .style("stroke",stroke)
+	      .style("opacity",parseFloat(startingO))
+        .on("mouseover",function(){
+            var originalO = this.style["opacity"]
+//            var newOpacity = parseFloat(originalOpacity)+.3
+//            d3.select(this)
+//                .transition().duration(400)
+//                .style("opacity",newOpacity)
+            
+            if(d3.event.shiftKey){
+                var newO = parseFloat(originalO)-.2
+                 if(newO<.2){newO=0}
+                d3.select(this).attr("stroke-opacity",newO)
+            }else{
+                var newO = parseFloat(originalO)+.2
+                if(newO>1){newO=1}
+                d3.select(this).transition().duration(100).attr("stroke-opacity",newO)    
+            }
+        })
+}
+function drawIntersection(data,routes,intersection){
+  
+
+  var images = svg.append("g")
+  images.append("svg:image")
+  .attr("x",projection([data[0],data[1]])[0]-6)
+  .attr("y",projection([data[0],data[1]])[1]-6)
+  .attr("xlink:href", "intersection.png")
+  .attr("width","12")
+  .attr("height","12")
+  .attr("opacity",1)
+  .on("mouseover",function(){
+    var names = ""
+    for(var i in routes){
+     // console.log(intersection)
+      d3.selectAll("."+routes[i]).attr("opacity",1)
+      names+=" "+routes[i]
+    }
+      tip.html(intersection+ " is the intersection between "+names)
+  })
+  .on("mouseout",function(){
+    for(var i in routes){
+//console.log(intersection)
+      d3.selectAll("."+routes[i]).attr("opacity",.2)
+      d3.selectAll("."+routes[i]+" circle").attr("opacity",0)
+    }
+  })  
+}
+
+function drawTiles(tiler, clipping){
+
+      svg.selectAll("g")
+          .data(tiler
+            .scale(projection.scale() * 2 * Math.PI)
+            .translate(projection([0, 0])))
+          .enter().append("g")
+          .each(function(d) {
+        
+              var g = d3.select(this);
+              d3.json("http://" + ["a", "b", "c"][(d[0] * 31 + d[1]) % 3] + ".tile.openstreetmap.us/vectiles-highroad/" + d[2] + "/" + d[0] + "/" + d[1] + ".json", function(error, json) {
+                    g.selectAll("path")
+                    .data(json.features.sort(function(a, b) { return a.properties.sort_key - b.properties.sort_key; }))
+                    .enter().append("path")
+                    .attr("class", function(d) { return d.properties.kind; })
+                    .attr("d", path)
+                .attr("opacity",function(){
+                  var o = Math.random()
+                  if(o<.5){
+                    return .3
+                  }
+                  return .6
+                })
+                   
+                 
+                    d3.selectAll(".major_road").attr("clip-path", function(d,i) { return "url(#"+clipping+")"; })
+                    .call(drag)
+                
+                    d3.selectAll(".highway ").attr("clip-path", function(d,i) { return "url(#"+clipping+")"; })
+                    .call(drag)
+                ;
+            });
+          });
+        }
+        var keyDictionary = {
+            "65":"a",
+            "66":"b",
+            "67":"c",
+            "68":"d",
+            "69":"e",
+            "70":"f",
+            "71":"g"
+        }
+        var keyCodeImageDictionary = {
+            "65":"car",
+            "66":"tree",
+            "67":"bus",
+            "68":"coffee",
+            "69":"tree_2",
+            "70":"tree_3",
+            "71":"car_2"
+        }
+        var currentImage = "images/coffee.png"
+        d3.select("body").on("keydown",function(){
+            var key = d3.event.keyCode
+            
+            if(key in keyCodeImageDictionary){
+                var imageName = keyCodeImageDictionary[key]
+                currentImage = "images/"+imageName+".png"
+                d3.select(".subtitle").html(keyDictionary[key]+": "+"<img src="+currentImage+" width=\"20\">")
+            }else{
+                currentImage = "images/coffee.png"
+                d3.select(".subtitle").html("Press keys a - g only")
+            }
+                
+            
+        })
+        d3.select("svg") .on("click",function(d){
+                        var coordinates = d3.mouse(this);
+                        var x = coordinates[0]
+                        var y = coordinates[1]
+                        var lat = projection.invert([x,y])[0]
+                        var lng = projection.invert([x,y])[1]
+                        //var circles = svg.append("circle").attr("cx",x).attr("cy",y).attr("r",4).attr("class","marks")
+                        svg.append("image").attr("x",x-5).attr("y",y-5)
+                        .attr("width",20).attr("height",20)
+                        .attr("xlink:href",function(){console.log("coffee"); return currentImage})
+                        //.html("<img border=\"0\" alt=\"\" src=\"trees copy.png\" height=\"400px\">")
+                      //  console.log([lat,lng])
+                      })
+      
+        
+
+</script>
