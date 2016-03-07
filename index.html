@@ -296,11 +296,17 @@ function drawTiles(tiler, clipping){
                 var imageName = keyCodeImageDictionary[key]
                 currentImage = "images/"+imageName+".png"
                 d3.select(".subtitle").html(keyDictionary[key]+": "+"<img src="+currentImage+" width=\"20\">")
-            }else{
+            }else if(key == 72){
+                drawCircle("red")
+                d3.select(".subtitle").html("red brush")
+            }else if(key == 73){
+                drawCircle("black")
+                d3.select(".subtitle").html("black brush")
+            }
+            else{
                 currentImage = "images/coffee.png"
                 d3.select(".subtitle").html("Press keys a - g only")
-            }
-                
+            }   
             
         })
         d3.select("svg") .on("click",function(d){
@@ -309,6 +315,8 @@ function drawTiles(tiler, clipping){
                         var y = coordinates[1]
                         var lat = projection.invert([x,y])[0]
                         var lng = projection.invert([x,y])[1]
+                       
+                        
                         //var circles = svg.append("circle").attr("cx",x).attr("cy",y).attr("r",4).attr("class","marks")
                         svg.append("image").attr("x",x-5).attr("y",y-5)
                         .attr("width",20).attr("height",20)
@@ -318,5 +326,26 @@ function drawTiles(tiler, clipping){
                       })
       
         
+                      function drawCircle(color){
+                      var filter = svg.append("defs")
+                         .append("filter")
+                          .attr("id", "blur")
+                         .append("feGaussianBlur")
+                          .attr("stdDeviation", 40);
+                          
+                          d3.select("svg") .on("click",function(){
+                              var coordinates = d3.mouse(this);
+                              var x = coordinates[0]
+                              var y = coordinates[1]
+                              var lat = projection.invert([x,y])[0]
+                              var lng = projection.invert([x,y])[1]
+                               svg.append("circle").attr("cx",x).attr("cy",y)
+                                .attr("r",60).attr("class","special").attr("opacity",.2).attr("fill",color).attr("stroke","#ffffff")
+                              .attr("filter", "url(#blur)");
 
+                          })
+                      }
+                      d3.selectAll(".special").on("click",function(){
+                          console.log("click special")
+                      })
 </script>
